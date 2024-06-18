@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -13,11 +7,102 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  TEACHER
+  USER
+}
+
 model User {
-  id Int @id @default(autoincrement())
-  email String @unique
-  username String @unique
-  password String
-  createAt DateTime @default(now())
-  updateAt DateTime @updatedAt
+  id             Int          @id @default(autoincrement())
+  email          String       @unique
+  username       String       @unique
+  password       String
+  role           UserRole     @default(USER)
+  studentAddress String?      // Поле для хранения адреса кошелька студента
+  createAt       DateTime     @default(now())
+  updateAt       DateTime     @updatedAt
+  groupId        Int?         // Поле для идентификатора группы (внешний ключ)
+  group          Group?       @relation(fields: [groupId], references: [id])
+  practicalWorks PracticalWork[]
+  attachedFiles  AttachedFile[]
+  subjects       SubjectGroup[] // Новое поле для связи с моделью SubjectGroup
+}
+
+model AttachedFile {
+  id              Int            @id @default(autoincrement())
+  filename        String
+  filePath        String
+  fileSize        Int?
+  uploadDate      DateTime       @default(now())
+  practicalWorkId Int
+  practicalWork   PracticalWork  @relation(fields: [practicalWorkId], references: [id])
+  userId          Int?           // Поле для привязки к пользователю
+  user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grade           Int?           // Добавляем поле для оценки
+}
+
+model FilePractical {
+  id              Int            @id @default(autoincrement())
+  filename        String
+  filePath        String
+  fileSize        Int?
+  uploadDate      DateTime       @default(now())
+  practicalWorkId Int
+  practicalWork   PracticalWork  @relation(fields: [practicalWorkId], references: [id])
+  userId          Int?           // Поле для привязки к пользователю  
+}
+
+model Subject {
+  id              Int             @id @default(autoincrement())
+  name            String          @unique
+  createAt        DateTime        @default(now())
+  updateAt        DateTime        @updatedAt
+  practicalWorks  PracticalWork[] // Предмет может иметь несколько практических работ
+  bgColor         String          // Цвет фона для предмета
+  subjectGroups   SubjectGroup[]
+}
+
+model SubjectGroup {
+  id          Int      @id @default(autoincrement())
+  subjectId   Int
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  groupId     Int
+  group       Group     @relation(fields: [groupId], references: [id])
+  teacherId   Int
+  teacher     User      @relation(fields: [teacherId], references: [id])
+}
+
+model PracticalWork {
+  id          Int             @id @default(autoincrement())
+  title       String
+  description String
+  createAt    DateTime        @default(now())
+  updateAt    DateTime        @updatedAt
+  groupId     Int?            // Идентификатор группы
+  group       Group?          @relation(fields: [groupId], references: [id])
+  userId      Int?            // Идентификатор пользователя
+  user        User?           @relation(fields: [userId], references: [id])
+  attachedFiles AttachedFile[] // Практическая работа может иметь несколько прикрепленных файлов
+  filePractical FilePractical[] // Практическая работа может иметь несколько прикрепленных файлов FilePractical
+  subjectId   Int              // Идентификатор предмета
+  subject     Subject          @relation(fields: [subjectId], references: [id])
+}
+
+model Group {
+  id          Int      @id @default(autoincrement())
+  groupNumber String   @unique
+  createAt    DateTime @default(now())
+  updateAt    DateTime @updatedAt
+  
+  users       User[]   // Группа может иметь несколько пользователей
+  practicalWorks PracticalWork[] // Группа может иметь несколько практических работ
+  subjects    SubjectGroup[] // Новое поле для связи с моделью SubjectGroup
+  facultyId   Int?
+  faculty     Faculty? @relation(fields: [facultyId], references: [id])
+}
+
+model Faculty {
+  id    Int    @id @default(autoincrement())
+  name  String
+  groups Group[]  // Факультет может иметь несколько групп
 }
