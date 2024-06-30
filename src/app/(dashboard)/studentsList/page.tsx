@@ -7,6 +7,7 @@ import StudentsListForTeacher from '@/components/form/StudentsListForTeacher';
 const StudentsListPage = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [groupId, setGroupId] = useState<number | null>(null);
+  const [teacherId, setTeacherId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,12 +18,12 @@ const StudentsListPage = () => {
         if (session && session.user) {
           if (session.user.role === "TEACHER") {
             setIsAdmin(true);
-            setGroupId(session.user.groupId ?? null);
+            setTeacherId(session.user.userId ?? null);
           } else {
             setGroupId(session.user.groupId ?? null);
           }
         } else {
-          setError('Session not found');
+          setError('Вы не авторизованы. Пожалуйста, войдите в систему.');
         }
       } catch (err) {
         console.error('Failed to fetch session:', err);
@@ -46,13 +47,11 @@ const StudentsListPage = () => {
   return (
     <div>
       {isAdmin ? (
-        <StudentsListForTeacher groupId={groupId} />
+        <StudentsListForTeacher teacherId={teacherId} />
       ) : (
         <StudentsListForStudent groupId={groupId} />
       )}
     </div>
-
-
   );
 };
 

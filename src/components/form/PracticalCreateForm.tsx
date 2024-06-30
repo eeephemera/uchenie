@@ -1,5 +1,4 @@
-// src/components/form/PracticalWorkCreateForm.tsx
-"use client";
+'use client';
 
 import React, { useEffect, useState } from 'react';
 import { Select, MenuItem, TextField, InputLabel, FormControl, Button, Box, Typography, Paper } from '@mui/material';
@@ -12,11 +11,18 @@ import { Group } from '@prisma/client';
 const FormSchema = z.object({
   title: z.string().min(1, 'Требуется заголовок').max(100),
   description: z.string().min(1, 'Требуется описание').max(2000),
+  link: z.string().url('Некорректный формат ссылки').optional(),
   groupId: z.number().positive('Выберите группу'),
   subjectId: z.number().positive('Выберите предметную область'),
 });
 
-const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
+interface PracticalWorkCreateFormProps {
+  subjectId: number;
+  teacherId: number;
+  onSuccess: (newPracticalWorkId: number) => void;
+}
+
+const PracticalWorkCreateForm: React.FC<PracticalWorkCreateFormProps> = ({ subjectId, teacherId, onSuccess }) => {
   const [groups, setGroups] = useState<Group[]>([]);
   const { toast } = useToast();
 
@@ -25,6 +31,7 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
     defaultValues: {
       title: '',
       description: '',
+      link: '',
       groupId: 0,
       subjectId: subjectId,
     },
@@ -33,8 +40,9 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
   useEffect(() => {
     const fetchGroups = async () => {
       try {
-        const response = await fetch('/api/groups');
+        const response = await fetch(`/api/groups?subjectId=${subjectId}&teacherId=${teacherId}`);
         const data = await response.json();
+        console.log('Fetched groups:', data); // Log the fetched groups for debugging
         setGroups(data);
       } catch (error) {
         console.error('Ошибка загрузки групп:', error);
@@ -42,11 +50,11 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
     };
 
     fetchGroups();
-  }, []);
+  }, [subjectId, teacherId]);
 
   const onSubmit = async (values: z.infer<typeof FormSchema>) => {
     try {
-      const response = await fetch('/api/practs', {
+      const response = await fetch('/api/practicalworkCreate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -55,11 +63,13 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
       });
 
       if (response.ok) {
+        const { newPracticalWork } = await response.json();
         toast({
           title: "Успех",
           description: "Вы успешно создали практическую работу",
         });
         form.reset();
+        onSuccess(newPracticalWork.id); // Call onSuccess with the new practical work ID
       } else {
         toast({
           title: "Ошибка",
@@ -117,6 +127,21 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
           />
 
           <Controller
+            name="link"
+            control={form.control}
+            render={({ field, fieldState }) => (
+              <TextField
+                {...field}
+                label="Ссылка"
+                variant="outlined"
+                fullWidth
+                error={!!fieldState.error}
+                helperText={fieldState.error?.message}
+              />
+            )}
+          />
+
+          <Controller
             name="groupId"
             control={form.control}
             render={({ field, fieldState }) => (
@@ -131,11 +156,15 @@ const PracticalWorkCreateForm = ({ subjectId }: { subjectId: number }) => {
                   <MenuItem value="" disabled>
                     Выберите группу
                   </MenuItem>
-                  {groups.map((group) => (
-                    <MenuItem key={group.id} value={group.id}>
-                      {group.groupNumber}
-                    </MenuItem>
-                  ))}
+                  {groups.length > 0 ? (
+                    groups.map((group) => (
+                      <MenuItem key={group.id} value={group.id}>
+                        {group.groupNumber}
+                      </MenuItem>
+                    ))
+                  ) : (
+                    <MenuItem value="">Группы не найдены</MenuItem>
+                  )}
                 </Select>
                 {fieldState.error && <Typography color="error">{fieldState.error.message}</Typography>}
               </FormControl>

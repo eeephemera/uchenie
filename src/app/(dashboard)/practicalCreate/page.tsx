@@ -1,4 +1,3 @@
-// src/app/(dashboard)/practicalCreate/page.tsx
 "use client";
 
 import React, { useEffect, useState } from 'react';
@@ -9,7 +8,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 const Page = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [subjectId, setSubjectId] = useState<number | null>(null);
-  const router = useRouter();
+  const [teacherId, setTeacherId] = useState<number | null>(null);
+  const router = useRouter(); 
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -17,6 +17,8 @@ const Page = () => {
       const session = await getSession();
       if (session && session.user && session.user.role === "TEACHER") {
         setIsAdmin(true);
+        setTeacherId(session.user.userId); // Extract teacherId from session
+
         // Получаем subjectId из параметров URL
         const subjectIdParam = searchParams.get('subjectId');
         if (subjectIdParam) {
@@ -28,14 +30,19 @@ const Page = () => {
     fetchSession();
   }, [searchParams]);
 
-  if (!isAdmin) {
-    return <div>У вас нет прав для доступа к этой странице</div>;
-  }
-
   return (
     <div>
-      <h2 className='text-2xl'>Создание новой практической работы</h2>
-      {subjectId && <PracticalWorkCreateForm subjectId={subjectId} />}
+      <h2 className='text-2xl'>Предметная область</h2>
+      {subjectId && teacherId && (
+        <PracticalWorkCreateForm
+          subjectId={subjectId}
+          teacherId={teacherId}
+          onSuccess={(newPracticalWorkId: number) => {
+            // handle success, e.g., navigate to the new practical work details page
+            router.push(`/practicalWorkDetails/${newPracticalWorkId}`);
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -10,10 +10,14 @@ export async function GET(req: Request) {
   const groupId = groupIdParam ? parseInt(groupIdParam, 10) : null;
   const practicalWorkId = practicalWorkIdParam ? parseInt(practicalWorkIdParam, 10) : null;
 
+  if (!groupId || isNaN(groupId)) {
+    return NextResponse.json({ message: 'Invalid groupId' }, { status: 400 });
+  }
+
   try {
     const students = await prisma.user.findMany({
       where: {
-        groupId: groupId !== null ? groupId : undefined,
+        groupId: groupId,
         role: "USER",
       },
       select: {
@@ -21,9 +25,7 @@ export async function GET(req: Request) {
         username: true,
         email: true,
         attachedFiles: {
-          where: {
-            practicalWorkId: practicalWorkId !== null ? practicalWorkId : undefined,
-          },
+          where: practicalWorkId ? { practicalWorkId } : {},
           select: {
             grade: true,
           },
@@ -31,9 +33,12 @@ export async function GET(req: Request) {
       },
     });
 
-    const studentsWithoutFiles = students.filter(student => student.attachedFiles.length === 0);
+    const studentsWithGrades = students.map(student => ({
+      ...student,
+      grades: student.attachedFiles.map(file => file.grade).filter(grade => grade !== null)
+    }));
 
-    return NextResponse.json({ students, studentsWithoutFiles }, { status: 200 });
+    return NextResponse.json({ students: studentsWithGrades }, { status: 200 });
   } catch (error) {
     console.error('Ошибка при получении студентов:', error);
     return NextResponse.json({ message: 'Error fetching students' }, { status: 500 });

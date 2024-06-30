@@ -24,7 +24,6 @@
             token: {
                 username: string;
                 role: UserRole;
-                studentAddress: string;
                 groupNumber?: string; 
                 userId: number;
                 groupId?: number; // Используем правильный тип

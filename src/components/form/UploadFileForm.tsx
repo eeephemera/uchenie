@@ -1,15 +1,18 @@
+"use client";
 import React, { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useToast } from "@/components/ui/use-toast";
 import { Button } from "@/components/ui/button";
+import Spinner from "@/components/ui/spinner";
 
 interface UploadFileFormProps {
   practicalWorkId: number;
 }
 
 const UploadFileForm: React.FC<UploadFileFormProps> = ({ practicalWorkId }) => {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const { toast } = useToast();
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,6 +41,8 @@ const UploadFileForm: React.FC<UploadFileFormProps> = ({ practicalWorkId }) => {
       return;
     }
 
+    setIsUploading(true);
+
     const formData = new FormData();
     formData.append("file", selectedFile);
     formData.append("practicalWorkId", practicalWorkId.toString());
@@ -55,6 +60,7 @@ const UploadFileForm: React.FC<UploadFileFormProps> = ({ practicalWorkId }) => {
           description: "Файл успешно загружен",
           variant: "default",
         });
+        setSelectedFile(null); // Clear the selected file
       } else {
         const errorData = await response.json();
         toast({
@@ -70,6 +76,8 @@ const UploadFileForm: React.FC<UploadFileFormProps> = ({ practicalWorkId }) => {
         description: "Произошла ошибка при загрузке файла",
         variant: "destructive",
       });
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -99,8 +107,8 @@ const UploadFileForm: React.FC<UploadFileFormProps> = ({ practicalWorkId }) => {
             </svg>
           </label>
         </div>
-        <Button onClick={handleUpload} disabled={!selectedFile}>
-          Загрузить
+        <Button onClick={handleUpload} disabled={!selectedFile || isUploading}>
+          {isUploading ? <Spinner/> : "Загрузить"}
         </Button>
       </div>
     </div>

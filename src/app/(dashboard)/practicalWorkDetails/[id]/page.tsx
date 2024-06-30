@@ -6,7 +6,7 @@ import Spinner from "@/components/ui/spinner";
 import { useToast } from "@/components/ui/use-toast";
 import FileList from "@/components/form/FileList";
 import SubmittedWorksList from "@/components/form/SubmittedWorksList";
-import { Card, CardContent, Typography, Box } from "@mui/material";
+import { Card, CardContent, Box } from "@mui/material";
 import UploadFileForm from "@/components/form/UploadFileForm";
 
 interface PracticalWork {

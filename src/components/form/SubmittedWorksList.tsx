@@ -1,5 +1,6 @@
+"use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Card, CardContent, Typography, Avatar, List, ListItem, CircularProgress, TextField, Button, Box, IconButton } from "@mui/material";
+import { Card, CardContent, Typography, Avatar, List, ListItem, CircularProgress, TextField, Button, Box, IconButton, Tooltip } from "@mui/material";
 import { useToast } from "@/components/ui/use-toast";
 import { ethers } from "ethers";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -22,6 +23,7 @@ interface Student {
   username: string;
   email: string;
   attachedFiles: Array<{ grade: number | null }>;
+  studentAddress: string; // Added studentAddress property
 }
 
 interface PracticalWork {
@@ -29,6 +31,7 @@ interface PracticalWork {
   title: string;
   description: string;
   groupId: number;
+  link: string; // Added link property
 }
 
 interface SubmittedWorksListProps {
@@ -40,12 +43,14 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
   const [submittedWorks, setSubmittedWorks] = useState<SubmittedWork[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
   const [studentsWithoutFiles, setStudentsWithoutFiles] = useState<Student[]>([]);
+  const [studentsWithoutWallet, setStudentsWithoutWallet] = useState<Student[]>([]); // Added state for students without wallet
   const [inputGrade, setInputGrade] = useState<{ [key: number]: string }>({});
   const [loadingWorkId, setLoadingWorkId] = useState<number | null>(null);
   const [grading, setGrading] = useState<{ [key: number]: boolean }>({});
   const [showUngraded, setShowUngraded] = useState(true);
   const [showGraded, setShowGraded] = useState(true);
   const [showNotSubmitted, setShowNotSubmitted] = useState(true);
+  const [showNoWallet, setShowNoWallet] = useState(true); // Added state for showing students without wallet
   const { toast } = useToast();
 
   const checkAccount = useCallback(async () => {
@@ -102,17 +107,11 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
         const response = await fetch(`/api/submittedWorks?practicalWorkId=${practicalWorkId}`);
         if (response.ok) {
           const data = await response.json();
-          console.log("Submitted works data:", data); // Логирование данных
-          if (Array.isArray(data.submittedWorks)) {
-            setSubmittedWorks(data.submittedWorks);
-          } else {
-            throw new Error("Некорректный формат данных");
-          }
+          setSubmittedWorks(data.submittedWorks);
         } else {
           throw new Error("Не удалось загрузить список сданных работ");
         }
       } catch (error) {
-        console.error("Ошибка при загрузке сданных работ:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось загрузить список сданных работ",
@@ -126,18 +125,13 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
         const response = await fetch(`/api/studentsList?practicalWorkId=${practicalWorkId}&groupId=${practicalWork.groupId}`);
         if (response.ok) {
           const data = await response.json();
-          console.log("Students data:", data); // Логирование данных
-          if (Array.isArray(data.students)) {
-            setStudents(data.students);
-            setStudentsWithoutFiles(data.students.filter((student: Student) => student.attachedFiles.length === 0));
-          } else {
-            throw new Error("Некорректный формат данных");
-          }
+          setStudents(data.students);
+          setStudentsWithoutFiles(data.students.filter((student: Student) => student.attachedFiles.length === 0));
+          setStudentsWithoutWallet(data.students.filter((student: Student) => !student.studentAddress)); // Filter students without wallet
         } else {
           throw new Error("Не удалось загрузить список студентов");
         }
       } catch (error) {
-        console.error("Ошибка при загрузке списка студентов:", error);
         toast({
           title: "Ошибка",
           description: "Не удалось загрузить список студентов",
@@ -152,6 +146,8 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
   }, [practicalWorkId, practicalWork.groupId, checkAccount, toast]);
 
   const handleGrade = async (workId: number, studentAddress: string) => {
+    setLoadingWorkId(workId);
+    setGrading({ ...grading, [workId]: true });
     try {
       const grade = parseInt(inputGrade[workId], 10);
 
@@ -161,10 +157,11 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
           description: "Оценка должна быть от 1 до 5",
           variant: "destructive",
         });
+        setGrading({ ...grading, [workId]: false });
+        setLoadingWorkId(null);
         return;
       }
 
-      setGrading({ ...grading, [workId]: true });
       const response = await fetch(`/api/gradeWork`, {
         method: "POST",
         body: JSON.stringify({ workId, grade, studentAddress }),
@@ -173,28 +170,28 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
         },
       });
 
-      if (response.ok) {
-        const updatedWorks = submittedWorks.map((work) =>
-          work.id === workId ? { ...work, grade } : work
-        );
-        setSubmittedWorks(updatedWorks);
-        setInputGrade((prevInputGrade) => {
-          const updatedInputGrade = { ...prevInputGrade };
-          updatedInputGrade[workId] = "";
-          return updatedInputGrade;
-        });
-        toast({
-          title: "Успешно",
-          description: "Оценка успешно отправлена",
-          variant: "default",
-        });
-
-        // Reward the student after grading
-        await rewardStudent(workId, studentAddress, grade);
-      } else {
+      if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || "Ошибка при обновлении оценки");
       }
+
+      // Reward the student after grading
+      await rewardStudent(workId, studentAddress, grade);
+
+      const updatedWorks = submittedWorks.map((work) =>
+        work.id === workId ? { ...work, grade } : work
+      );
+      setSubmittedWorks(updatedWorks);
+      setInputGrade((prevInputGrade) => {
+        const updatedInputGrade = { ...prevInputGrade };
+        updatedInputGrade[workId] = "";
+        return updatedInputGrade;
+      });
+      toast({
+        title: "Успешно",
+        description: "Оценка успешно отправлена",
+        variant: "default",
+      });
     } catch (error: any) {
       console.error("Ошибка при установке оценки:", error);
       toast({
@@ -204,6 +201,7 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
       });
     } finally {
       setGrading({ ...grading, [workId]: false });
+      setLoadingWorkId(null);
     }
   };
 
@@ -236,14 +234,12 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
     } catch (error: any) {
       if (error.code === 'TRANSACTION_REPLACED') {
         if (error.replacement) {
-          console.log('Transaction replaced with:', error.replacement);
           toast({
             title: 'Успешно',
             description: 'Транзакция была заменена новой. Студент вознагражден.',
             variant: 'default',
           });
         } else {
-          console.error('Transaction was replaced and failed:', error.cancelled);
           toast({
             title: 'Ошибка',
             description: `Транзакция была заменена и не удалась: ${error.message}`,
@@ -251,12 +247,12 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
           });
         }
       } else {
-        console.error('Ошибка при вознаграждении студента:', error);
         toast({
           title: 'Ошибка',
           description: `Не удалось вознаградить студента: ${error.message}`,
           variant: 'destructive',
         });
+        throw new Error(error.message);
       }
     }
   };
@@ -274,6 +270,19 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
           <Typography variant="body1">
             {practicalWork.description}
           </Typography>
+
+          {practicalWork.link && (
+            <Box mt={2}>
+              <Typography variant="body2">
+                Ссылка на материал: 
+                <Tooltip title={practicalWork.link} arrow>
+                  <a href={practicalWork.link} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline ml-2">
+                    {practicalWork.link}
+                  </a>
+                </Tooltip>
+              </Typography>
+            </Box>
+          )}
         </CardContent>
       </Card>
       <Card sx={{ flex: 1, maxHeight: '80vh', overflowY: 'auto', boxShadow: 3 }}>
@@ -323,7 +332,7 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
                         <Button 
                           onClick={() => handleGrade(work.id, work.studentAddress)} 
                           disabled={grading[work.id]}
-                          startIcon={grading[work.id] ? <CircularProgress size={20} /> : <CheckCircleOutlineIcon />}
+                          startIcon={loadingWorkId === work.id ? <CircularProgress size={20} /> : <CheckCircleOutlineIcon />}
                           variant="contained"
                           color="primary"
                         >
@@ -381,7 +390,7 @@ const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId
               )
             )}
           </Box>
-          <Box>
+          <Box mb={4}>
             <Typography variant="h5" component="h3" gutterBottom>
               Студенты без прикрепленных файлов
               <IconButton onClick={() => setShowNotSubmitted(!showNotSubmitted)}>

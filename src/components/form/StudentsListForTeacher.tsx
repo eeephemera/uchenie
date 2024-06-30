@@ -3,26 +3,32 @@ import { User } from '@prisma/client';
 import { useToast } from '@/components/ui/use-toast';
 
 interface StudentsListForTeacherProps {
-  groupId: number | null;
+  teacherId: number | null;
 }
 
 interface StudentWithGrades extends User {
   grades: number[];
 }
 
-const StudentsListForTeacher: React.FC<StudentsListForTeacherProps> = ({ groupId }) => {
+const StudentsListForTeacher: React.FC<StudentsListForTeacherProps> = ({ teacherId }) => {
   const [groupStudents, setGroupStudents] = useState<StudentWithGrades[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<number | null>(null);
-  const [groups, setGroups] = useState<{ groupNumber: ReactNode; id: number; name: string }[]>([]);
+  const [groups, setGroups] = useState<{ groupNumber: ReactNode; id: number }[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!teacherId) return;
+
     const fetchGroups = async () => {
       try {
-        const response = await fetch('/api/groups');
+        const response = await fetch(`/api/groupsJournal?teacherId=${teacherId}`);
         if (!response.ok) throw new Error('Failed to fetch groups');
         const data = await response.json();
-        setGroups(data);
+        const uniqueGroups = Array.from(new Set(data.map((group: { id: number }) => group.id)))
+          .map(id => {
+            return data.find((group: { id: number }) => group.id === id);
+          });
+        setGroups(uniqueGroups);
       } catch (error) {
         console.error('Error fetching groups:', error);
         toast({
@@ -34,7 +40,7 @@ const StudentsListForTeacher: React.FC<StudentsListForTeacherProps> = ({ groupId
     };
 
     fetchGroups();
-  }, [toast]);
+  }, [teacherId, toast]);
 
   useEffect(() => {
     if (!selectedGroup) return;
@@ -44,7 +50,7 @@ const StudentsListForTeacher: React.FC<StudentsListForTeacherProps> = ({ groupId
         const response = await fetch(`/api/studentsList?groupId=${selectedGroup}`);
         if (!response.ok) throw new Error('Failed to fetch group students');
         const data = await response.json();
-        const studentsWithGrades = data.map((student: any) => ({
+        const studentsWithGrades = data.students.map((student: any) => ({
           ...student,
           grades: student.attachedFiles.map((file: any) => file.grade).filter((grade: number) => grade !== null),
         }));

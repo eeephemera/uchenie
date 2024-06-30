@@ -1,3 +1,4 @@
+
 // src/app/api/subjectsList/route.ts
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
@@ -8,7 +9,7 @@ export async function GET(request: Request) {
   const groupId = searchParams.get("groupId");
 
   try {
-    let subjects: any[];
+    let subjects: any[] = [];
 
     if (teacherId) {
       subjects = await prisma.subject.findMany({
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
               teacherId: parseInt(teacherId, 10),
             },
           },
+        },
+        orderBy: {
+          createAt: 'asc',
         },
         include: {
           subjectGroups: {
@@ -37,6 +41,9 @@ export async function GET(request: Request) {
             },
           },
         },
+        orderBy: {
+          createAt: 'asc',
+        },
         include: {
           subjectGroups: {
             include: {
@@ -46,8 +53,6 @@ export async function GET(request: Request) {
           },
         },
       });
-    } else {
-      subjects = [];
     }
 
     return NextResponse.json(subjects, { status: 200 });

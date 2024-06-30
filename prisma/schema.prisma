@@ -38,23 +38,24 @@ model AttachedFile {
   practicalWork   PracticalWork  @relation(fields: [practicalWorkId], references: [id])
   userId          Int?           // Поле для привязки к пользователю
   user            User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  grade           Int?           // Добавляем поле для оценки
+  grade           Int?           // поле для оценки
 }
 
-model FilePractical {
+model File {
   id              Int            @id @default(autoincrement())
   filename        String
-  filePath        String
-  fileSize        Int?
-  uploadDate      DateTime       @default(now())
+  path            String
+  size            Int
+  mimetype        String
   practicalWorkId Int
   practicalWork   PracticalWork  @relation(fields: [practicalWorkId], references: [id])
-  userId          Int?           // Поле для привязки к пользователю  
+  uploadDate      DateTime       @default(now())
 }
 
 model Subject {
   id              Int             @id @default(autoincrement())
   name            String          @unique
+  description     String
   createAt        DateTime        @default(now())
   updateAt        DateTime        @updatedAt
   practicalWorks  PracticalWork[] // Предмет может иметь несколько практических работ
@@ -76,6 +77,7 @@ model PracticalWork {
   id          Int             @id @default(autoincrement())
   title       String
   description String
+  Link        String?
   createAt    DateTime        @default(now())
   updateAt    DateTime        @updatedAt
   groupId     Int?            // Идентификатор группы
@@ -83,7 +85,7 @@ model PracticalWork {
   userId      Int?            // Идентификатор пользователя
   user        User?           @relation(fields: [userId], references: [id])
   attachedFiles AttachedFile[] // Практическая работа может иметь несколько прикрепленных файлов
-  filePractical FilePractical[] // Практическая работа может иметь несколько прикрепленных файлов FilePractical
+  filePractical File[]         // Практическая работа может иметь несколько прикрепленных файлов File
   subjectId   Int              // Идентификатор предмета
   subject     Subject          @relation(fields: [subjectId], references: [id])
 }

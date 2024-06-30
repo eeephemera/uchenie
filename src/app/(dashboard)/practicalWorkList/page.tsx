@@ -1,24 +1,22 @@
-// src/app/(dashboard)/practicalWorkList/page.tsx
-"use client";
+'use client';
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
 import { UserRole } from "@prisma/client";
 import PracticalWorkListForm from '@/components/form/PracticalWorkListForm';
-import PracticalWorkStudentForm from '@/components/form/PracticalWorkStudentForm';
-import { Card, CardHeader, CardBody, CardFooter } from "@/components/ui/card";
+import PracticalWorkListStudentForm from '@/components/form/PracticalWorkListStudentForm';
 import { getSession } from 'next-auth/react';
 import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 const PracticalWorkList = () => {
   const [isAdmin, setIsAdmin] = useState(false);
-  const [groupId, setGroupId] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [session, setSession] = useState<any>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   const subjectId = searchParams.get('subjectId');
+  const subjectName = searchParams.get('subjectName') || "Предметная область";
 
   useEffect(() => {
     const fetchSession = async () => {
@@ -26,12 +24,7 @@ const PracticalWorkList = () => {
         const session = await getSession();
         if (session && session.user) {
           setSession(session);
-          if (session.user.role === "TEACHER") {
-            setIsAdmin(true);
-            setGroupId(session.user.groupId ?? null);
-          } else {
-            setGroupId(session.user.groupId ?? null);
-          }
+          setIsAdmin(session.user.role === UserRole.TEACHER);
         } else {
           setError('Session not found');
         }
@@ -44,7 +37,7 @@ const PracticalWorkList = () => {
     };
 
     fetchSession();
-  }, []);
+  }, [subjectId, subjectName]);
 
   if (isLoading) {
     return <div>Загрузка...</div>;
@@ -54,44 +47,31 @@ const PracticalWorkList = () => {
     return <div>Ошибка: {error}</div>;
   }
 
-  const isTeacher = session.user?.role === UserRole.TEACHER;
+  const isTeacher = session?.user?.role === UserRole.TEACHER;
 
   return (
-    <div className="p-6">
+    <div className="flex flex-col h-screen w-full overflow-hidden p-6">
       {isTeacher ? (
-        <div>
-          <Card>
-            <CardHeader>
-              <h2>Практические работы</h2>
-            </CardHeader>
-            <CardBody>
-              <PracticalWorkListForm subjectId={Number(subjectId)} />
-            </CardBody>
-            <CardFooter className="mt-4">
-              <Link className={buttonVariants()} href={`/practicalCreate?subjectId=${subjectId}`}>
-                Создать практическую работу
-              </Link>
-            </CardFooter>
-          </Card>
+        <div className="flex flex-col h-full w-full max-w-6xl mx-auto overflow-hidden">
+          <PracticalWorkListForm
+            subjectId={Number(subjectId)}
+            subjectName={subjectName}
+            teacherId={session.user.userId}  // Pass teacherId to PracticalWorkListForm
+          />
         </div>
       ) : (
-        <div>
-          <Card>
-            <CardHeader>
-              <h2>Список практических работ для группы {session?.user?.groupNumber}</h2>
-            </CardHeader>
-            <CardBody>
-              {session?.user?.groupId ? (
-                <PracticalWorkStudentForm groupId={session.user.groupId} subjectId={Number(subjectId)} />
-              ) : (
-                <p>Группа не назначена</p>
-              )}
-              <p>Email: {session.user.email || 'Не указано'}</p>
-              <p>Имя пользователя: {session.user.username || 'Не указано'}</p>
-              <p>Роль: {session.user.role}</p>
-              <p>Номер группы: {session.user.groupNumber || 'Не указано'}</p>
-            </CardBody>
-          </Card>
+        <div className="flex flex-col h-full w-full max-w-6xl mx-auto overflow-hidden">
+          <div className="flex-1">
+            <div>Хорошей работы :)</div>
+            {session?.user?.groupId ? (
+              <PracticalWorkListStudentForm
+                groupId={session.user.groupId}
+                subjectId={Number(subjectId)}
+              />
+            ) : (
+              <p>Группа не назначена</p>
+            )}
+          </div>
         </div>
       )}
     </div>

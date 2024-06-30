@@ -1,8 +1,7 @@
-// src/components/form/SubjectList.tsx
 import React, { useEffect, useState } from 'react';
 import { Card, CardBody } from '@/components/ui/card';
 import { useToast } from '@/components/ui/use-toast';
-import { Avatar, Button } from '@mui/material';
+import { Button } from '@mui/material';
 
 interface SubjectListProps {
   onSubjectClick: (subjectId: number) => void;
@@ -13,10 +12,12 @@ interface SubjectListProps {
 interface Subject {
   id: number;
   name: string;
+  description: string;
   bgColor: string;
   subjectGroups: Array<{
     group: {
       groupNumber: string;
+      id: number;
     };
     teacher: {
       username: string;
@@ -31,14 +32,32 @@ const SubjectList: React.FC<SubjectListProps> = ({ onSubjectClick, teacherId, gr
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const response = await fetch(
-          teacherId
-            ? `/api/subjectsList?teacherId=${teacherId}`
-            : `/api/subjectsList?groupId=${groupId}`
-        );
-        const data = await response.json();
-        setSubjects(data);
+        let response;
+        if (teacherId) {
+          response = await fetch(`/api/subjectsList?teacherId=${teacherId}`);
+        } else if (groupId) {
+          response = await fetch(`/api/subjectsList?groupId=${groupId}`);
+        }
+
+        if (response && response.ok) {
+          const data = await response.json();
+          console.log("Fetched subjects:", data); // Debugging log
+          if (Array.isArray(data)) {
+            setSubjects(data);
+          } else {
+            setSubjects([]);
+            toast({
+              title: "Ошибка",
+              description: "Получены некорректные данные",
+              variant: "destructive",
+            });
+          }
+        } else {
+          console.error("Response error:", response); // Debugging log
+          setSubjects([]);
+        }
       } catch (error) {
+        console.error("Fetch error:", error); // Debugging log
         toast({
           title: "Ошибка",
           description: "Ошибка при загрузке предметных областей",
@@ -50,34 +69,58 @@ const SubjectList: React.FC<SubjectListProps> = ({ onSubjectClick, teacherId, gr
     fetchSubjects();
   }, [teacherId, groupId, toast]);
 
-  if (subjects.length === 0) {
+  if (!Array.isArray(subjects) || subjects.length === 0) {
     return <div>Нет доступных предметных областей.</div>;
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-      {subjects.map((subject) => (
-        <Card
-          key={subject.id}
-          className="cursor-pointer"
-          style={{ backgroundColor: subject.bgColor }}
-          onClick={() => onSubjectClick(subject.id)}
-        >
-          <CardBody className="flex flex-col items-start">
-            <Avatar>{subject.name.charAt(0)}</Avatar>
-            <h3 className="text-black text-lg font-semibold">{subject.name}</h3>
-            {subject.subjectGroups.map((sg, index) => (
-              <div key={index}>
-                <p className="text-black">{sg.group.groupNumber}</p>
-                <p className="text-black">{sg.teacher.username}</p>
-              </div>
-            ))}
-            <Button onClick={() => onSubjectClick(subject.id)} variant="outlined" color="primary">
-              Подробнее
-            </Button>
-          </CardBody>
-        </Card>
-      ))}
+    <div className="container mx-auto p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {subjects.map((subject) => {
+          const relevantGroup = subject.subjectGroups.find(
+            (sg) => sg.group.id === groupId
+          );
+
+          return (
+            <Card
+              key={subject.id}
+              className="cursor-pointer p-6 shadow-lg w-full bg-card text-card-foreground"
+              onClick={() => onSubjectClick(subject.id)}
+              style={{ backgroundColor: subject.bgColor }}
+            >
+              <CardBody className="flex flex-col items-start space-y-4">
+                <h3 className="text-black text-2xl font-bold">{subject.name}</h3>
+                <p className="text-black text-sm">{subject.description}</p>
+                {teacherId ? (
+                  <div className="space-y-2">
+                    {subject.subjectGroups.map((sg, index) => (
+                      <p key={index} className="text-black text-sm">Группа: {sg.group.groupNumber}</p>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {relevantGroup ? (
+                      <p className="text-black text-sm">Преподаватель: {relevantGroup.teacher.username}</p>
+                    ) : (
+                      <p className="text-black text-sm">Нет информации о преподавателе</p>
+                    )}
+                  </div>
+                )}
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onSubjectClick(subject.id);
+                  }}
+                  variant="contained"
+                  color="primary"
+                >
+                  Подробнее
+                </Button>
+              </CardBody>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 };

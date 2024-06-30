@@ -54,6 +54,7 @@ export const authOptions: NextAuthOptions = {
           role: existingUser.role,
           groupId: existingUser.groupId ?? 0, // Исправьте возможность `null`
           groupNumber,
+          studentAddress: existingUser.studentAddress ?? 0,
         };
       },
     }),
@@ -66,8 +67,8 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role;
         token.groupId = user.groupId ?? 0; // Обработка возможного `null`
         token.groupNumber = user.groupNumber ?? ''; // Убедитесь, что группа существует
-
-        console.log(`JWT callback: User ID = ${user.id}, Group ID = ${token.groupId}, Group Number = ${token.groupNumber}`);
+        token.studentAddress = user.studentAddress ?? '';
+        console.log(`JWT callback: User ID = ${user.id}, Group ID = ${token.groupId}, Group Number = ${token.groupNumber} ${token.studentAddress}`);
       }
       return token;
     },
@@ -89,7 +90,7 @@ export const authOptions: NextAuthOptions = {
           role: token.role,
           groupId: token.groupId ?? 0,
           groupNumber: token.groupNumber ?? '',
-          studentAddress: token.studentAddress,
+          studentAddress: token.studentAddress ?? '',
         },
       };
     },

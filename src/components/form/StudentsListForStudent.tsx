@@ -17,14 +17,14 @@ const StudentsListForStudent: React.FC<StudentsListForStudentProps> = ({ groupId
   const { toast } = useToast();
 
   useEffect(() => {
-    if (!groupId) return;
+    if (!groupId) return; // Если groupId отсутствует, не делаем запрос
 
     const fetchStudents = async () => {
       try {
         const response = await fetch(`/api/studentsList?groupId=${groupId}`);
         if (!response.ok) throw new Error('Failed to fetch students');
         const data = await response.json();
-        const studentsWithGrades = data.map((student: any) => ({
+        const studentsWithGrades = data.students.map((student: any) => ({
           ...student,
           grades: student.attachedFiles.map((file: any) => file.grade).filter((grade: number) => grade !== null),
         }));

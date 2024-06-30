@@ -12,7 +12,10 @@ export async function GET(request: Request) {
     const practicalWorks = await prisma.practicalWork.findMany({
       where: {
         groupId: groupId !== null ? groupId : undefined,
-        subjectId: subjectId !== null ? subjectId : undefined, // Фильтруем по subjectId
+        subjectId: subjectId !== null ? subjectId : undefined,
+      },
+      orderBy: {
+        createAt: 'desc', // Order by creation time in descending order
       },
       include: {
         group: true,

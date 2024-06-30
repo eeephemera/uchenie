@@ -1,3 +1,4 @@
+/* src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -67,9 +68,21 @@
     --ring: 217.2 32.6% 17.5%;
   }
 }
- 
+
 @layer utilities {
   .border-border {
     border: 1px solid #000; /* Example border style */
+  }
+
+  .text-primary {
+    color: hsl(var(--primary));
+  }
+
+  .bg-card {
+    background-color: hsl(var(--card));
+  }
+
+  .text-card-foreground {
+    color: hsl(var(--card-foreground));
   }
 }
