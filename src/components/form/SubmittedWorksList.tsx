@@ -37,6 +37,7 @@ interface PracticalWork {
 interface SubmittedWorksListProps {
   practicalWorkId: number;
   practicalWork: PracticalWork;
+
 }
 
 const SubmittedWorksList: React.FC<SubmittedWorksListProps> = ({ practicalWorkId, practicalWork }) => {

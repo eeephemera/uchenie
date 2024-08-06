@@ -32,7 +32,6 @@ const Page = () => {
 
   return (
     <div>
-      <h2 className='text-2xl'>Предметная область</h2>
       {subjectId && teacherId && (
         <PracticalWorkCreateForm
           subjectId={subjectId}
